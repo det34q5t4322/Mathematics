@@ -1,92 +1,76 @@
 'use strict';
 
-// 1. ТЕКСТЫ ПОДСКАЗОК
-const TIPS = {
-  entropy: "Энтропия Шеннона (H): мера неопределенности. Чем выше значение, тем сложнее взломать пароль методом перебора (Brute-force).",
-  math: "Математическое ожидание (E): среднее значение кодов символов. Показывает центр распределения символов в наборе данных.",
-  disp: "Дисперсия (D): мера разброса значений вокруг среднего. Высокая дисперсия указывает на хаотичность и отсутствие паттернов."
+// 1. КОНСТАНТЫ И СПРАВКА
+const HELP = {
+  entropy: "Энтропия Шеннона: мера неопределенности. Чем выше значение, тем сложнее взлом перебором.",
+  math: "Мат. ожидание: среднее арифметическое кодов символов. Показывает центр распределения.",
+  disp: "Дисперсия: мера разброса значений. Высокое значение указывает на хорошую хаотичность."
 };
 
-// 2. СОСТОЯНИЕ ПРИЛОЖЕНИЯ
 const state = {
-  currentPassword: '',
+  password: '',
   mouseEntropy: [],
-  poolReady: false,
   charts: { freq: null, phase: null }
 };
 
-// 3. DOM ЭЛЕМЕНТЫ
+// 2. ИНИЦИАЛИЗАЦИЯ ИНТЕРФЕЙСА
 const el = {
   tabs: document.querySelectorAll('.tab-btn'),
-  pages: document.querySelectorAll('.tab-content'),
+  pages: document.querySelectorAll('.tab-page'),
   panel: document.getElementById('settingsPanel'),
   btnOpen: document.getElementById('openSettings'),
   btnClose: document.getElementById('closeSettings'),
+  theme: document.getElementById('themeSelect'),
+  font: document.getElementById('fontSlider'),
+  opacity: document.getElementById('opacitySlider'),
   passOut: document.getElementById('passOutput'),
-  btnGen: document.getElementById('btnGenerate'),
-  themeBtns: document.querySelectorAll('.theme-option'),
-  fontSlider: document.getElementById('fontSlider'),
-  opacitySlider: document.getElementById('opacitySlider')
+  btnGen: document.getElementById('btnGenerate')
 };
-
-/* ════════════════════════════════════════════════
-   ЛОГИКА ИНТЕРФЕЙСА
-   ════════════════════════════════════════════════ */
 
 // Переключение вкладок
 el.tabs.forEach(btn => {
   btn.onclick = () => {
-    const tab = btn.dataset.tab;
     el.tabs.forEach(b => b.classList.remove('active'));
     el.pages.forEach(p => p.classList.remove('active'));
-    
     btn.classList.add('active');
-    document.getElementById(`tab-${tab}`).classList.add('active');
+    const target = btn.dataset.tab;
+    document.getElementById(`tab-${target}`).classList.add('active');
     
-    if(tab === 'analysis') runFullAnalysis();
+    if(target === 'analysis') runAnalysis();
   };
 });
 
-// Настройки
+// Управление настройками
 el.btnOpen.onclick = () => el.panel.classList.add('open');
 el.btnClose.onclick = () => el.panel.classList.remove('open');
 
-el.themeBtns.forEach(btn => {
-  btn.onclick = () => {
-    document.body.className = '';
-    const theme = btn.dataset.theme;
-    if(theme !== 'default') document.body.classList.add(`theme-${theme}`);
-  };
-});
-
-el.fontSlider.oninput = (e) => {
-  const size = e.target.value;
-  document.getElementById('fontSizeDisplay').textContent = size + 'px';
-  document.documentElement.style.setProperty('--base-fs', size + 'px');
+el.theme.onchange = (e) => {
+  document.body.className = e.target.value === 'default' ? '' : `theme-${e.target.value}`;
 };
 
-el.opacitySlider.oninput = (e) => {
-  document.documentElement.style.setProperty('--bg-panel', `rgba(15, 23, 42, ${e.target.value/100})`);
+el.font.oninput = (e) => {
+  document.getElementById('fsVal').textContent = e.target.value + 'px';
+  document.documentElement.style.setProperty('--fs', e.target.value + 'px');
 };
 
-// Подсказки
+el.opacity.oninput = (e) => {
+  document.documentElement.style.setProperty('--panel', `rgba(15, 23, 42, ${e.target.value/100})`);
+};
+
 document.addEventListener('click', (e) => {
-  if(e.target.classList.contains('tip-icon') && document.getElementById('tipsToggle').checked) {
-    alert(TIPS[e.target.dataset.tip]);
+  if(e.target.classList.contains('tip') && document.getElementById('tipsToggle').checked) {
+    alert(HELP[e.target.dataset.tip]);
   }
 });
 
-/* ════════════════════════════════════════════════
-   МАТЕМАТИЧЕСКИЙ ДВИЖОК (ГЕНЕРАЦИЯ)
-   ════════════════════════════════════════════════ */
-
+// 3. ГЕНЕРАЦИЯ ПАРОЛЯ
 function getCharset() {
-  let set = '';
-  if(document.getElementById('upper').checked) set += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  if(document.getElementById('lower').checked) set += 'abcdefghijklmnopqrstuvwxyz';
-  if(document.getElementById('digits').checked) set += '0123456789';
-  if(document.getElementById('special').checked) set += '!@#$%^&*()_+-=[]{}|;:,.<>?';
-  return set;
+  let s = '';
+  if(document.getElementById('upper').checked) s += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  if(document.getElementById('lower').checked) s += 'abcdefghijklmnopqrstuvwxyz';
+  if(document.getElementById('digits').checked) s += '0123456789';
+  if(document.getElementById('special').checked) s += '!@#$%^&*()_+-=[]{}|;:,.<>?';
+  return s;
 }
 
 el.btnGen.onclick = () => {
@@ -94,126 +78,111 @@ el.btnGen.onclick = () => {
   const charset = getCharset();
   const algo = document.getElementById('algoSelect').value;
   
-  if(!charset) return alert("Выберите хотя бы один набор символов!");
+  if(!charset) return alert("Выберите наборы символов!");
 
-  let pass = '';
+  let res = '';
   if(algo === 'lcg') {
     let seed = Date.now();
-    const a = 1664525, c = 1013904223, m = Math.pow(2, 32);
     for(let i=0; i<len; i++) {
-      seed = (a * seed + c) % m;
-      pass += charset[seed % charset.length];
+      seed = (1664525 * seed + 1013904223) % 4294967296;
+      res += charset[seed % charset.length];
     }
   } else if(algo === 'crypto') {
-    const vals = new Uint32Array(len);
-    window.crypto.getRandomValues(vals);
-    for(let i=0; i<len; i++) {
-      pass += charset[vals[i] % charset.length];
-    }
+    const array = new Uint32Array(len);
+    crypto.getRandomValues(array);
+    for(let i=0; i<len; i++) res += charset[array[i] % charset.length];
   } else if(algo === 'mouse') {
-    // Упрощенная логика TRNG на основе накопленного пула
     if(state.mouseEntropy.length < len) return alert("Недостаточно данных мыши! Подвигайте курсором.");
     for(let i=0; i<len; i++) {
-      const idx = Math.abs(state.mouseEntropy.pop()) % charset.length;
-      pass += charset[idx];
+      res += charset[Math.abs(state.mouseEntropy.pop()) % charset.length];
     }
   }
 
-  state.currentPassword = pass;
-  el.passOut.value = pass;
-  updateStrengthUI(pass);
+  state.password = res;
+  el.passOut.value = res;
+  updateStrength(res);
 };
 
-// Сбор энтропии мыши
+// Мышиный TRNG
 document.onmousemove = (e) => {
-  const algo = document.getElementById('algoSelect').value;
-  if(algo !== 'mouse') return;
-  
+  if(document.getElementById('algoSelect').value !== 'mouse') return;
   document.getElementById('mousePool').style.display = 'block';
-  if(state.mouseEntropy.length < 500) {
-    state.mouseEntropy.push(e.screenX ^ e.screenY ^ Date.now());
-    const perc = Math.floor((state.mouseEntropy.length / 500) * 100);
-    document.getElementById('poolFill').style.width = perc + '%';
-    document.getElementById('poolStatus').textContent = perc + '%';
+  if(state.mouseEntropy.length < 1000) {
+    state.mouseEntropy.push(e.pageX ^ e.pageY ^ Date.now());
+    const p = Math.floor((state.mouseEntropy.length / 1000) * 100);
+    document.getElementById('poolFill').style.width = p + '%';
+    document.getElementById('poolStatus').textContent = p + '%';
   }
 };
 
-/* ════════════════════════════════════════════════
-   БЛОК ГЛУБОКОГО АНАЛИЗА
-   ════════════════════════════════════════════════ */
-
-function runFullAnalysis() {
-  const pass = state.currentPassword;
+// 4. АНАЛИЗ (ВКЛАДКА 2)
+function runAnalysis() {
+  const pass = state.password;
   if(!pass) return;
 
   const codes = [...pass].map(c => c.charCodeAt(0));
-  const len = codes.length;
+  const n = codes.length;
 
-  // 1. Энтропия Шеннона
+  // Частоты
   const freq = {};
   codes.forEach(c => freq[c] = (freq[c] || 0) + 1);
-  let H = 0;
+
+  // Энтропия Шеннона
+  let entropy = 0;
   Object.values(freq).forEach(count => {
-    const p = count / len;
-    H -= p * Math.log2(p);
+    const p = count / n;
+    entropy -= p * Math.log2(p);
   });
 
-  // 2. Мат. ожидание и Дисперсия
-  const E = codes.reduce((a,b) => a+b, 0) / len;
-  const D = codes.reduce((a,b) => a + Math.pow(b - E, 2), 0) / len;
+  // Мат. ожидание и Дисперсия
+  const mean = codes.reduce((a, b) => a + b, 0) / n;
+  const disp = codes.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / n;
 
-  // Вывод в UI
-  document.getElementById('resEntropy').textContent = H.toFixed(3);
-  document.getElementById('resMath').textContent = E.toFixed(2);
-  document.getElementById('resDisp').textContent = D.toFixed(2);
+  document.getElementById('valEntropy').textContent = entropy.toFixed(3);
+  document.getElementById('valMath').textContent = mean.toFixed(2);
+  document.getElementById('valDisp').textContent = disp.toFixed(2);
 
-  // 3. Лог расчетов (LaTeX-style)
   document.getElementById('mathLog').innerHTML = `
-    <p>Расчет энтропии: H = -Σ p(x) log₂ p(x) = <strong>${H.toFixed(4)}</strong></p>
-    <p>Мат. ожидание: E(x) = (1/n) Σ xᵢ = <strong>${E.toFixed(2)}</strong></p>
-    <p>Дисперсия: D(x) = E(x²) - [E(x)]² = <strong>${D.toFixed(2)}</strong></p>
+    <p>Анализ строки длиной ${n} симв.</p>
+    <p>H = -Σ pᵢ log₂ pᵢ = <b>${entropy.toFixed(5)}</b></p>
+    <p>D = E[X²] - (E[X])² = <b>${disp.toFixed(2)}</b></p>
   `;
 
-  renderCharts(codes, freq);
+  renderCharts(freq, codes);
 }
 
-function renderCharts(codes, freqMap) {
+function renderCharts(freq, codes) {
   if(state.charts.freq) state.charts.freq.destroy();
   if(state.charts.phase) state.charts.phase.destroy();
 
-  // Гистограмма
-  const ctxF = document.getElementById('freqChart').getContext('2d');
+  const ctxF = document.getElementById('freqChart');
   state.charts.freq = new Chart(ctxF, {
     type: 'bar',
     data: {
-      labels: Object.keys(freqMap).map(c => String.fromCharCode(c)),
-      datasets: [{ label: 'Частота', data: Object.values(freqMap), backgroundColor: '#38bdf8' }]
+      labels: Object.keys(freq).map(c => String.fromCharCode(c)),
+      datasets: [{ label: 'Частота', data: Object.values(freq), backgroundColor: '#38bdf8' }]
     },
-    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    options: { responsive: true, maintainAspectRatio: false }
   });
 
-  // Фазовая плоскость (x_i, x_{i+1})
-  const phaseData = [];
-  for(let i=0; i<codes.length-1; i++) {
-    phaseData.push({ x: codes[i], y: codes[i+1] });
-  }
-  const ctxP = document.getElementById('phaseChart').getContext('2d');
+  const ctxP = document.getElementById('phaseChart');
+  const scatterData = codes.slice(0, -1).map((v, i) => ({ x: v, y: codes[i+1] }));
   state.charts.phase = new Chart(ctxP, {
     type: 'scatter',
-    data: { datasets: [{ label: 'Связи', data: phaseData, backgroundColor: '#10b981' }] },
-    options: { plugins: { legend: { display: false } } }
+    data: { datasets: [{ label: 'Связи x(i)/x(i+1)', data: scatterData, backgroundColor: '#10b981' }] },
+    options: { responsive: true, maintainAspectRatio: false }
   });
 }
 
-function updateStrengthUI(pass) {
-  const s = Math.min(pass.length * 4, 100);
-  const fill = document.getElementById('strengthFill');
-  fill.style.width = s + '%';
-  fill.style.background = s < 40 ? '#ef4444' : s < 75 ? '#fbbf24' : '#10b981';
-  document.getElementById('strengthLabel').textContent = `БЕЗОПАСНОСТЬ: ${s < 40 ? 'НИЗКАЯ' : s < 75 ? 'СРЕДНЯЯ' : 'ВЫСОКАЯ'}`;
+function updateStrength(p) {
+  const s = Math.min(p.length * 4, 100);
+  const f = document.getElementById('strengthFill');
+  f.style.width = s + '%';
+  f.style.background = s < 40 ? '#ef4444' : s < 75 ? '#fbbf24' : '#10b981';
+  document.getElementById('strengthLabel').textContent = `Надежность: ${s}%`;
 }
 
-// Первичная синхронизация слайдера длины
+// Синхронизация слайдера длины
 document.getElementById('passLen').oninput = (e) => {
-  document.getElementById('lenLabel').textContent = e.target.value;
+  document.getElementById('lenDisplay').textContent = e.target.value;
 };
