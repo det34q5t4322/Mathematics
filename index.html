@@ -3,492 +3,149 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PassForge v3.0 — Анализатор криптографической энтропии</title>
-  <meta name="description" content="Профессиональный инструмент анализа криптографической энтропии и генерации паролей. Дипломная работа ИСС9-125." />
-
+  <title>PassForge v3.1 — Анализатор энтропии</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Orbitron:wght@400;600;700;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
-<body>
-
-  <!-- Анимированный фон -->
+<body class="theme-default">
   <div class="grid-bg" aria-hidden="true"></div>
   <div class="scanlines" aria-hidden="true"></div>
-  <!-- Эффект сканирования при переключении режима -->
-  <div class="scan-overlay" id="scanOverlay" aria-hidden="true"></div>
 
-  <!-- ══════════════════════ ШАПКА ══════════════════════ -->
-  <header class="header" role="banner">
-    <div class="header-logo">
-      <span class="logo-bracket">[</span>
-      <span class="logo-text">PASS<span class="logo-accent">FORGE</span></span>
-      <span class="logo-bracket">]</span>
-      <span class="logo-version">v3.0</span>
+  <header class="header">
+    <div class="header-left">
+      <h1 class="logo">[PASSFORGE]<span>v3.1</span></h1>
+      <nav class="tabs-nav">
+        <button class="tab-btn active" data-tab="generator">⚡ ГЕНЕРАТОР</button>
+        <button class="tab-btn" data-tab="analysis">📊 ПОЛНЫЙ АНАЛИЗ</button>
+      </nav>
     </div>
-
-    <!-- SPA-навигация -->
-    <nav class="mode-nav" role="navigation" aria-label="Режимы">
-      <button class="mode-btn active" data-mode="generator" aria-pressed="true">
-        <span aria-hidden="true">⚡</span> ГЕНЕРАТОР
-      </button>
-      <button class="mode-btn" data-mode="analysis" aria-pressed="false">
-        <span aria-hidden="true">📡</span> ПОЛНЫЙ АНАЛИЗ
-      </button>
-    </nav>
-
-    <div class="header-status">
-      <span class="status-dot" id="statusDot" aria-hidden="true"></span>
-      <span id="mouseEntropyStatus" aria-live="polite">MOUSE ENTROPY: СБОР...</span>
+    <div class="header-right">
+      <button id="openSettings" class="settings-trigger">⚙️</button>
     </div>
   </header>
 
-  <!-- ══════════════════════ РЕЖИМ: ГЕНЕРАТОР ══════════════════════ -->
-  <main class="view view--generator active" id="viewGenerator" role="main">
-    <div class="main-grid">
-
-      <!-- Левая колонка: Конфигуратор -->
-      <section class="col-left">
-
-        <div class="card" id="configurator">
-          <div class="card-header">
-            <span class="card-icon">⚙</span>
-            <span class="card-title">КОНФИГУРАТОР ПАРОЛЯ</span>
-          </div>
-
-          <div class="control-group">
-            <label class="label" for="lengthSlider">
-              Длина пароля: <span class="label-value" id="lengthValue">16</span> символов
-            </label>
-            <div class="slider-track">
-              <input type="range" id="lengthSlider" min="8" max="64" value="16" class="slider" />
-            </div>
-            <div class="slider-bounds"><span>8</span><span>64</span></div>
-          </div>
-
-          <div class="control-group">
-            <span class="label">Набор символов:</span>
-            <div class="checkbox-grid">
-              <label class="checkbox-item">
-                <input type="checkbox" id="useUpper" checked />
-                <span class="checkbox-box"></span>
-                <span class="checkbox-label">Прописные <em>A-Z</em></span>
-              </label>
-              <label class="checkbox-item">
-                <input type="checkbox" id="useLower" checked />
-                <span class="checkbox-box"></span>
-                <span class="checkbox-label">Строчные <em>a-z</em></span>
-              </label>
-              <label class="checkbox-item">
-                <input type="checkbox" id="useDigits" checked />
-                <span class="checkbox-box"></span>
-                <span class="checkbox-label">Цифры <em>0-9</em></span>
-              </label>
-              <label class="checkbox-item">
-                <input type="checkbox" id="useSpecial" checked />
-                <span class="checkbox-box"></span>
-                <span class="checkbox-label">Спецсимволы <em>!@#$%^&*</em></span>
-              </label>
-              <label class="checkbox-item">
-                <input type="checkbox" id="useSep" />
-                <span class="checkbox-box"></span>
-                <span class="checkbox-label">Разделители <em>- _</em></span>
-              </label>
-              <label class="checkbox-item checkbox-item--warn">
-                <input type="checkbox" id="excludeSimilar" />
-                <span class="checkbox-box"></span>
-                <span class="checkbox-label">Искл. похожие <em>il1Lo0O</em></span>
-              </label>
-            </div>
-          </div>
-
-          <div class="control-group">
-            <span class="label">Алгоритм генерации:</span>
-            <div class="algo-tabs">
-              <button class="algo-tab active" data-algo="lcg">LCG</button>
-              <button class="algo-tab" data-algo="crypto">Crypto API</button>
-              <button class="algo-tab" data-algo="mouse">Mouse TRNG</button>
-            </div>
-            <p class="algo-desc" id="algoDesc">
-              LCG — детерминированный PRNG. a=1664525, c=1013904223, m=2³².
-              Паттерны на фазовой плоскости — научное доказательство несовершенства алгоритма.
-            </p>
-          </div>
-
-          <!-- Прогресс-бар мышиной энтропии (показывается только при algo=mouse) -->
-          <div class="mouse-pool-inline" id="mousePoolInline">
-            <div class="mpi-label">
-              Накопление хаоса: <span id="poolPct">0</span>%
-              <span class="mpi-ready" id="mpiReady">✓ ГОТОВ К РАБОТЕ</span>
-            </div>
-            <div class="mpi-track">
-              <div class="mpi-fill" id="mpiFill"></div>
-            </div>
-            <div class="mpi-hint">Двигайте мышью по экрану для сбора энтропии (256 событий)</div>
-          </div>
-
-          <button class="btn-generate" id="btnGenerate">
-            <span class="btn-generate__icon">⚡</span>
-            СГЕНЕРИРОВАТЬ ПАРОЛЬ
-          </button>
-        </div>
-
-        <!-- Вывод пароля -->
-        <div class="card" id="outputCard">
-          <div class="card-header">
-            <span class="card-icon">🔑</span>
-            <span class="card-title">РЕЗУЛЬТАТ</span>
-            <span class="gen-time-badge" id="genTimeBadge"></span>
-          </div>
-          <div class="password-display" id="passwordDisplay" role="status" aria-live="polite">
-            <span class="password-placeholder">— нажмите ГЕНЕРИРОВАТЬ —</span>
-          </div>
-
-          <!-- Многосегментный индикатор надёжности -->
-          <div class="strength-multi">
-            <div class="strength-multi__bar">
-              <div class="strength-seg" id="seg1"></div>
-              <div class="strength-seg" id="seg2"></div>
-              <div class="strength-seg" id="seg3"></div>
-              <div class="strength-seg" id="seg4"></div>
-              <div class="strength-seg" id="seg5"></div>
-            </div>
-            <span class="strength-multi__label" id="strengthLabel">—</span>
-          </div>
-
-          <div class="output-actions">
-            <button class="btn-action" id="btnCopy">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="9" y="9" width="13" height="13" rx="2"/>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-              </svg>
-              КОПИРОВАТЬ
-            </button>
-            <button class="btn-action" id="btnRefresh">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="23 4 23 10 17 10"/>
-                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-              </svg>
-              ЕЩЁ РАЗ
-            </button>
-          </div>
-          <div class="copy-toast" id="copyToast" role="alert">✓ Скопировано!</div>
-        </div>
-
-        <!-- Быстрая аналитика -->
-        <div class="card">
-          <div class="card-header">
-            <span class="card-icon">📊</span>
-            <span class="card-title">БЫСТРАЯ АНАЛИТИКА</span>
-          </div>
-          <div class="metrics-row">
-            <div class="metric-card">
-              <div class="metric-card__label">Энтропия</div>
-              <div class="metric-card__value" id="entropyValue">—</div>
-              <div class="metric-card__unit">бит</div>
-              <div class="metric-card__formula">E = L·log₂(N)</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-card__label">Алфавит |Σ|</div>
-              <div class="metric-card__value" id="alphabetSize">—</div>
-              <div class="metric-card__unit">символов</div>
-              <div class="metric-card__formula">N</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-card__label">Взлом @ 10⁹/с</div>
-              <div class="metric-card__value" id="bruteValue">—</div>
-              <div class="metric-card__unit" id="bruteUnit">—</div>
-              <div class="metric-card__formula">T = Nᴸ / 10⁹</div>
-            </div>
-          </div>
-        </div>
-
-      </section>
-
-      <!-- Правая колонка: Графики -->
-      <section class="col-right">
-
-        <div class="card card--chart">
-          <div class="card-header">
-            <span class="card-icon">📈</span>
-            <span class="card-title">ГИСТОГРАММА ЧАСТОТ</span>
-            <span class="card-hint">r ∈ [0, 1), 20 бинов</span>
-          </div>
-          <div class="chart-container">
-            <canvas id="histChart"></canvas>
-          </div>
-        </div>
-
-        <div class="card card--chart">
-          <div class="card-header">
-            <span class="card-icon">🔵</span>
-            <span class="card-title">ФАЗОВАЯ ПЛОСКОСТЬ (xᵢ, xᵢ₊₁)</span>
-            <span class="card-hint">
-              <span class="legend-dot legend-dot--blue"></span>Уникальные
-              <span class="legend-dot legend-dot--red"></span>Коллизии
-            </span>
-          </div>
-          <div class="chart-container">
-            <canvas id="scatterChart"></canvas>
-          </div>
-          <div class="repeat-stats">
-            Коллизий: <span class="repeat-count" id="repeatCount">0</span>
-            из <span id="totalPoints">0</span>
-            (<span id="repeatPct">0.0</span>%)
-          </div>
-        </div>
-
-        <div class="card card--entropy-pool">
-          <div class="card-header">
-            <span class="card-icon">🖱</span>
-            <span class="card-title">ПУЛ МЫШИНОЙ ЭНТРОПИИ</span>
-          </div>
-          <div class="pool-bar-track">
-            <div class="pool-bar-fill" id="poolBarFill"></div>
-          </div>
-          <div class="pool-stats">
-            Собрано: <span id="poolCount">0</span> / 256 событий
-          </div>
-          <div class="pool-bytes" id="poolBytes">—</div>
-        </div>
-
-      </section>
+  <aside id="settingsPanel" class="settings-panel">
+    <div class="settings-header">
+      <h3>НАСТРОЙКИ ИНТЕРФЕЙСА</h3>
+      <button id="closeSettings">×</button>
     </div>
+    <div class="settings-body">
+      <div class="setting-item">
+        <label>Цветовая схема</label>
+        <select id="themeSelect">
+          <option value="default">Deep Space (Blue)</option>
+          <option value="graphite">Graphite (Dark)</option>
+          <option value="nord">Nord (Frost)</option>
+          <option value="emerald">Emerald (Matrix)</option>
+        </select>
+      </div>
+      <div class="setting-item">
+        <label>Размер шрифта</label>
+        <input type="range" id="fontSlider" min="12" max="20" value="16">
+      </div>
+      <div class="setting-item">
+        <label>Прозрачность панелей</label>
+        <input type="range" id="opacitySlider" min="20" max="100" value="75">
+      </div>
+      <div class="setting-item">
+        <label>
+          <input type="checkbox" id="showTipsToggle" checked> Показывать подсказки (?)
+        </label>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-layout">
+    <section id="tab-generator" class="tab-content active">
+      <div class="generator-container">
+        <div class="card config-card">
+          <h2 class="card-title">⚙️ КОНФИГУРАТОР ПАРОЛЯ</h2>
+          <div class="config-grid">
+            <div class="config-row">
+              <label>ДЛИНА: <span id="lenVal">16</span></label>
+              <input type="range" id="passLen" min="4" max="128" value="16">
+            </div>
+            <div class="options-grid">
+              <label><input type="checkbox" id="useUpper" checked> A-Z</label>
+              <label><input type="checkbox" id="useLower" checked> a-z</label>
+              <label><input type="checkbox" id="useDigits" checked> 0-9</label>
+              <label><input type="checkbox" id="useSpecial"> !@#$</label>
+            </div>
+            <div class="algo-select">
+              <label>АЛГОРИТМ:</label>
+              <select id="algoSelect">
+                <option value="lcg">LCG (PRNG)</option>
+                <option value="crypto">Crypto API (CSPRNG)</option>
+                <option value="mouse">Mouse TRNG</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="mousePoolInline" class="mouse-pool-info" style="display:none;">
+            <div class="pool-bar"><div id="poolProgress" class="pool-fill"></div></div>
+            <p>Двигайте мышью для сбора энтропии: <span id="poolPerc">0%</span></p>
+          </div>
+
+          <button id="btnGenerate" class="btn-main">СГЕНЕРИРОВАТЬ ПАРОЛЬ</button>
+        </div>
+
+        <div class="card result-card">
+          <h2 class="card-title">💾 РЕЗУЛЬТАТ ГЕНЕРАЦИИ</h2>
+          <div class="pass-output-wrapper">
+            <input type="text" id="passwordResult" readonly placeholder="Пароль появится здесь...">
+            <button id="btnCopy" class="btn-icon" title="Копировать">📋</button>
+          </div>
+          <div class="strength-meter">
+            <div id="strengthBar" class="strength-fill"></div>
+          </div>
+          <p id="strengthText" class="strength-label">Ожидание...</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-analysis" class="tab-content">
+      <div class="analysis-container">
+        <div class="metrics-row">
+          <div class="metric-box">
+            <span class="m-label">ЭНТРОПИЯ (бит) <span class="tip" data-tip="entropy">?</span></span>
+            <span class="m-value" id="entropyVal">0.0</span>
+          </div>
+          <div class="metric-box">
+            <span class="m-label">МАТ. ОЖИДАНИЕ <span class="tip" data-tip="expectation">?</span></span>
+            <span class="m-value" id="expectationVal">0.0</span>
+          </div>
+          <div class="metric-box">
+            <span class="m-label">ДИСПЕРСИЯ <span class="tip" data-tip="dispersion">?</span></span>
+            <span class="m-value" id="dispersionVal">0.0</span>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="card chart-card">
+            <h3 class="card-title">ГИСТОГРАММА ЧАСТОТ</h3>
+            <canvas id="freqChart"></canvas>
+          </div>
+          <div class="card chart-card">
+            <h3 class="card-title">ФАЗОВАЯ ПЛОСКОСТЬ</h3>
+            <canvas id="phaseChart"></canvas>
+          </div>
+        </div>
+
+        <div class="card math-card">
+          <h3 class="card-title">МАТЕМАТИЧЕСКИЙ АППАРАТ</h3>
+          <div id="mathDetails" class="math-log">Здесь будут отображены детальные вычисления после генерации...</div>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <!-- ══════════════════════ РЕЖИМ: ПОЛНЫЙ АНАЛИЗ ══════════════════════ -->
-  <main class="view view--analysis" id="viewAnalysis" role="main" aria-hidden="true">
-
-    <div class="analysis-header">
-      <h1 class="analysis-title">
-        <span class="analysis-title__accent">КРИПТОГРАФИЧЕСКИЙ</span> АНАЛИЗ
-      </h1>
-      <p class="analysis-subtitle">
-        Информационная теория Шеннона · Метод Монте-Карло · Детектор коллизий · Статистические тесты
-      </p>
-    </div>
-
-    <!-- Плашка ключевых метрик -->
-    <div class="analysis-metrics-bar">
-      <div class="ambar-item">
-        <div class="ambar-item__label">ЭНТРОПИЯ (бит)</div>
-        <div class="ambar-item__value" id="aEntropyTotal">—</div>
-        <div class="ambar-item__sub" id="aEntropyPerChar">— бит/символ</div>
-      </div>
-      <div class="ambar-divider"></div>
-      <div class="ambar-item">
-        <div class="ambar-item__label">E[X] МАТ. ОЖИД.</div>
-        <div class="ambar-item__value" id="aExpected">—</div>
-        <div class="ambar-item__sub">идеал: 0.5000</div>
-      </div>
-      <div class="ambar-divider"></div>
-      <div class="ambar-item">
-        <div class="ambar-item__label">D[X] ДИСПЕРСИЯ</div>
-        <div class="ambar-item__value" id="aVariance">—</div>
-        <div class="ambar-item__sub">идеал: 0.0833</div>
-      </div>
-      <div class="ambar-divider"></div>
-      <div class="ambar-item">
-        <div class="ambar-item__label">КОЛЛИЗИИ</div>
-        <div class="ambar-item__value" id="aCollisions">—</div>
-        <div class="ambar-item__sub" id="aCollisionsPct">—% повторов</div>
-      </div>
-      <div class="ambar-divider"></div>
-      <div class="ambar-item">
-        <div class="ambar-item__label">ВЗЛОМ @ 10⁹/с</div>
-        <div class="ambar-item__value" id="aBrute">—</div>
-        <div class="ambar-item__sub" id="aBruteUnit">—</div>
-      </div>
-      <div class="ambar-divider"></div>
-      <div class="ambar-item">
-        <div class="ambar-item__label">СКОРОСТЬ АЛГО</div>
-        <div class="ambar-item__value" id="aGenSpeed">—</div>
-        <div class="ambar-item__sub">мкс/пароль</div>
-      </div>
-    </div>
-
-    <!-- Пароль в режиме анализа -->
-    <div class="analysis-pw-row">
-      <div class="card analysis-pw-card">
-        <div class="card-header">
-          <span class="card-icon">🔑</span>
-          <span class="card-title">АНАЛИЗИРУЕМЫЙ ПАРОЛЬ</span>
-          <button class="btn-action btn-action--sm" id="aRefresh">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="23 4 23 10 17 10"/>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-            </svg>
-            ОБНОВИТЬ
-          </button>
-        </div>
-        <div class="password-display" id="aPasswordDisplay">—</div>
-        <div class="strength-multi" style="margin-top:12px">
-          <div class="strength-multi__bar">
-            <div class="strength-seg" id="aSeg1"></div>
-            <div class="strength-seg" id="aSeg2"></div>
-            <div class="strength-seg" id="aSeg3"></div>
-            <div class="strength-seg" id="aSeg4"></div>
-            <div class="strength-seg" id="aSeg5"></div>
-          </div>
-          <span class="strength-multi__label" id="aStrengthLabel">—</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Три графика -->
-    <div class="analysis-charts-grid">
-
-      <div class="card card--chart">
-        <div class="card-header">
-          <span class="card-icon">📊</span>
-          <span class="card-title">ГИСТОГРАММА (20 бинов)</span>
-        </div>
-        <div class="chart-container chart-container--lg">
-          <canvas id="aHistChart"></canvas>
-        </div>
-      </div>
-
-      <div class="card card--chart">
-        <div class="card-header">
-          <span class="card-icon">🔵</span>
-          <span class="card-title">ФАЗОВАЯ ПЛОСКОСТЬ</span>
-          <span class="card-hint">
-            <span class="legend-dot legend-dot--blue"></span>
-            <span class="legend-dot legend-dot--red"></span>
-          </span>
-        </div>
-        <div class="chart-container chart-container--lg">
-          <canvas id="aScatterChart"></canvas>
-        </div>
-      </div>
-
-      <div class="card card--chart">
-        <div class="card-header">
-          <span class="card-icon">🎯</span>
-          <span class="card-title">МОНТЕ-КАРЛО π</span>
-        </div>
-        <div class="chart-container chart-container--lg">
-          <canvas id="aMcChart"></canvas>
-        </div>
-        <div class="mc-result">
-          π ≈ <span id="aPiValue">—</span>
-          <span class="mc-ideal">(эталон: 3.14159)</span>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Нижний блок: формулы + таблица алгоритмов -->
-    <div class="analysis-detail-grid">
-
-      <div class="card">
-        <div class="card-header">
-          <span class="card-icon">📐</span>
-          <span class="card-title">МАТЕМАТИЧЕСКИЙ АППАРАТ</span>
-        </div>
-        <div class="formula-list">
-          <div class="formula-item">
-            <div class="formula-name">Энтропия пароля</div>
-            <div class="formula-expr">H = L · log₂(N)</div>
-            <div class="formula-val" id="fEntropyVal">—</div>
-          </div>
-          <div class="formula-item">
-            <div class="formula-name">Бит на символ (Шеннон)</div>
-            <div class="formula-expr">h = log₂(N)</div>
-            <div class="formula-val" id="fBitsPerChar">—</div>
-          </div>
-          <div class="formula-item">
-            <div class="formula-name">Математическое ожидание</div>
-            <div class="formula-expr">E[X] = (1/n)·Σxᵢ</div>
-            <div class="formula-val" id="fExpected">—</div>
-          </div>
-          <div class="formula-item">
-            <div class="formula-name">Дисперсия</div>
-            <div class="formula-expr">D[X] = E[X²] − (E[X])²</div>
-            <div class="formula-val" id="fVariance">—</div>
-          </div>
-          <div class="formula-item">
-            <div class="formula-name">Ср. кв. отклонение</div>
-            <div class="formula-expr">σ = √D[X]</div>
-            <div class="formula-val" id="fStdDev">—</div>
-          </div>
-          <div class="formula-item">
-            <div class="formula-name">Пространство поиска</div>
-            <div class="formula-expr">C = N^L</div>
-            <div class="formula-val" id="fCombinations">—</div>
-          </div>
-          <div class="formula-item">
-            <div class="formula-name">Время взлома @ 10⁹/с</div>
-            <div class="formula-expr">T = N^L / 10⁹</div>
-            <div class="formula-val" id="fBrute">—</div>
-          </div>
-          <div class="formula-item">
-            <div class="formula-name">Монте-Карло π</div>
-            <div class="formula-expr">π ≈ 4·(M/n), x²+y²≤1</div>
-            <div class="formula-val" id="fPi">—</div>
-          </div>
-          <div class="formula-item">
-            <div class="formula-name">Коэффициент коллизий</div>
-            <div class="formula-expr">K = (повт./всего)·100%</div>
-            <div class="formula-val" id="fCollRate">—</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <span class="card-icon">🔬</span>
-          <span class="card-title">ХАРАКТЕРИСТИКИ АЛГОРИТМА</span>
-        </div>
-        <div class="algo-info-content" id="algoInfoContent"></div>
-
-        <div class="algo-compare-table">
-          <div class="act-header">
-            <span>Алгоритм</span>
-            <span>Тип</span>
-            <span>Период</span>
-            <span>Крипто</span>
-          </div>
-          <div class="act-row" id="actLcg">
-            <span>LCG</span><span>PRNG</span><span>2³²</span>
-            <span class="act-badge act-bad">✗ Нет</span>
-          </div>
-          <div class="act-row" id="actCrypto">
-            <span>Crypto API</span><span>CSPRNG</span><span>∞</span>
-            <span class="act-badge act-good">✓ Да</span>
-          </div>
-          <div class="act-row" id="actMouse">
-            <span>Mouse TRNG</span><span>TRNG</span><span>N/A</span>
-            <span class="act-badge act-good">✓ Да</span>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </main>
-
-  <!-- ══════════════════════ ДИПЛОМНЫЙ ФУТЕР (FIXED) ══════════════════════ -->
-  <footer class="diploma-footer" role="contentinfo">
-    <div class="diploma-footer__inner">
-      <div class="df-left">
-        <span class="df-logo">[ PF·v3 ]</span>
-        <span class="df-sep">·</span>
-        <span>Все вычисления — на стороне клиента</span>
-        <span class="df-sep">·</span>
-        <span>Пароли не передаются на сервер</span>
-      </div>
-      <div class="df-right">
-        <span>Разработчик: <strong>Утебалиев Асан Азаматович</strong></span>
-        <span class="df-sep">|</span>
-        <span>Группа: <strong>ИСС9-125</strong></span>
-        <span class="df-sep">|</span>
-        <span>Специальность: <strong>11.02.15</strong></span>
-        <span class="df-sep">|</span>
-        <span><strong>2026 г.</strong></span>
-      </div>
-    </div>
+  <footer class="diploma-footer">
+    <span>[ PF·v3.1 ]</span>
+    <span>Разработчик: Утебалиев А.А.</span>
+    <span>Группа: ИСС9-125</span>
   </footer>
 
   <script src="app.js"></script>
