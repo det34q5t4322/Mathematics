@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PassForge v3.5 — Профессиональный крипто-анализатор</title>
+  <title>PassForge v3.5 — Криптографический Анализатор</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -13,151 +13,137 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body class="theme-default">
-  <div class="grid-bg" aria-hidden="true"></div>
-  <div class="scanlines" aria-hidden="true"></div>
+  <div class="grid-bg"></div>
+  <div class="scanlines"></div>
 
   <header class="main-header">
-    <div class="header-content">
-      <div class="logo-group">
-        <h1 class="logo">[PASSFORGE]<span>v3.5</span></h1>
-        <nav class="tabs-nav">
-          <button class="tab-btn active" data-tab="generator">⚡ ГЕНЕРАТОР</button>
-          <button class="tab-btn" data-tab="analysis">📊 АНАЛИЗ</button>
-        </nav>
-      </div>
-      <button id="openSettings" class="btn-settings">⚙️ ПАНЕЛЬ УПРАВЛЕНИЯ</button>
+    <div class="header-left">
+      <h1 class="logo">[PASSFORGE]<span>v3.5</span></h1>
+      <nav class="tabs-nav">
+        <button class="tab-btn active" data-tab="generator">⚡ ГЕНЕРАТОР</button>
+        <button class="tab-btn" data-tab="analysis">📊 АНАЛИЗ</button>
+      </nav>
+    </div>
+    <div class="header-right">
+      <button id="openSettings" class="btn-settings">⚙️ НАСТРОЙКИ</button>
     </div>
   </header>
 
   <aside id="settingsPanel" class="settings-panel">
     <div class="settings-header">
-      <h3>КОНФИГУРАЦИЯ ИНТЕРФЕЙСА</h3>
+      <h3>КОНФИГУРАЦИЯ</h3>
       <button id="closeSettings">×</button>
     </div>
     <div class="settings-body">
-      <section class="settings-section">
-        <h4>Цветовая схема</h4>
-        <div class="theme-grid">
-          <button class="theme-option" data-theme="default" title="Deep Space"></button>
-          <button class="theme-option" data-theme="graphite" title="Graphite"></button>
-          <button class="theme-option" data-theme="nord" title="Nord Frost"></button>
-          <button class="theme-option" data-theme="emerald" title="Emerald Matrix"></button>
-        </div>
-      </section>
-      
-      <section class="settings-section">
-        <h4>Типографика</h4>
-        <label>Размер текста: <span id="fontSizeDisplay">16px</span></label>
-        <input type="range" id="fontSlider" min="12" max="20" value="16">
-      </section>
-
-      <section class="settings-section">
-        <h4>Визуальные эффекты</h4>
-        <label>Прозрачность панелей</label>
+      <div class="s-group">
+        <label>Цветовая схема</label>
+        <select id="themeSelect">
+          <option value="default">Deep Space (Синий)</option>
+          <option value="graphite">Graphite (Серый)</option>
+          <option value="nord">Nord (Голубой)</option>
+          <option value="emerald">Emerald (Зеленый)</option>
+        </select>
+      </div>
+      <div class="s-group">
+        <label>Размер шрифта: <span id="fsVal">16px</span></label>
+        <input type="range" id="fontSlider" min="12" max="22" value="16">
+      </div>
+      <div class="s-group">
+        <label>Прозрачность блоков</label>
         <input type="range" id="opacitySlider" min="10" max="100" value="80">
-      </section>
-
-      <section class="settings-section">
-        <label class="switch-label">
+      </div>
+      <div class="s-group">
+        <label class="toggle">
           <input type="checkbox" id="tipsToggle" checked>
           <span>Включить подсказки (?)</span>
         </label>
-      </section>
+      </div>
     </div>
   </aside>
 
-  <main class="content-wrapper">
-    <section id="tab-generator" class="tab-content active">
-      <div class="split-layout">
+  <main class="main-content">
+    <section id="tab-generator" class="tab-page active">
+      <div class="generator-grid">
         <div class="card config-card">
-          <h2 class="card-title">НАСТРОЙКИ ГЕНЕРАЦИИ</h2>
-          <div class="config-inner">
-            <div class="range-group">
-              <label>ДЛИНА: <strong id="lenLabel">24</strong></label>
-              <input type="range" id="passLen" min="6" max="128" value="24">
-            </div>
-            
-            <div class="checkbox-group">
-              <label><input type="checkbox" id="upper" checked> A-Z</label>
-              <label><input type="checkbox" id="lower" checked> a-z</label>
-              <label><input type="checkbox" id="digits" checked> 0-9</label>
-              <label><input type="checkbox" id="special"> !@#$</label>
-            </div>
-
-            <div class="select-group">
-              <label>АЛГОРИТМ:</label>
-              <select id="algoSelect">
-                <option value="lcg">LCG (Линейный конгруэнтный)</option>
-                <option value="crypto">Crypto API (CSPRNG)</option>
-                <option value="mouse">Mouse TRNG (Аппаратный)</option>
-              </select>
-            </div>
-
-            <div id="mousePool" class="mouse-pool" style="display:none;">
-              <div class="pool-progress"><div id="poolFill" class="pool-fill"></div></div>
-              <p>Сбор энтропии: <span id="poolStatus">0%</span></p>
-            </div>
-
-            <button id="btnGenerate" class="btn-action">СГЕНЕРИРОВАТЬ</button>
+          <h2 class="card-title">ПАРАМЕТРЫ ПАРОЛЯ</h2>
+          <div class="config-row">
+            <label>Длина: <strong id="lenDisplay">24</strong></label>
+            <input type="range" id="passLen" min="6" max="128" value="24">
           </div>
+          <div class="checkbox-grid">
+            <label><input type="checkbox" id="upper" checked> A-Z</label>
+            <label><input type="checkbox" id="lower" checked> a-z</label>
+            <label><input type="checkbox" id="digits" checked> 0-9</label>
+            <label><input type="checkbox" id="special"> !@#$</label>
+          </div>
+          <div class="config-row">
+            <label>Алгоритм:</label>
+            <select id="algoSelect">
+              <option value="lcg">LCG (PRNG)</option>
+              <option value="crypto">Crypto API (CSPRNG)</option>
+              <option value="mouse">Mouse TRNG</option>
+            </select>
+          </div>
+          <div id="mousePool" class="mouse-pool-box" style="display:none;">
+            <div class="pool-bar"><div id="poolFill"></div></div>
+            <p>Двигайте мышью: <span id="poolStatus">0%</span></p>
+          </div>
+          <button id="btnGenerate" class="btn-primary">СГЕНЕРИРОВАТЬ ПАРОЛЬ</button>
         </div>
 
-        <div class="card output-card">
+        <div class="card result-card">
           <h2 class="card-title">РЕЗУЛЬТАТ</h2>
-          <div class="output-wrapper">
-            <input type="text" id="passOutput" readonly placeholder="Ожидание генерации...">
-            <button id="btnCopy" class="btn-copy">КОПИРОВАТЬ</button>
+          <div class="result-box">
+            <input type="text" id="passOutput" readonly placeholder="Пароль...">
+            <button id="btnCopy">КОПИРОВАТЬ</button>
           </div>
-          <div class="strength-box">
-            <div class="strength-bar"><div id="strengthFill" class="s-fill"></div></div>
-            <p id="strengthLabel">БЕЗОПАСНОСТЬ: ---</p>
+          <div class="strength-meter">
+            <div id="strengthFill"></div>
           </div>
+          <p id="strengthLabel">Надежность: ---</p>
         </div>
       </div>
     </section>
 
-    <section id="tab-analysis" class="tab-content">
+    <section id="tab-analysis" class="tab-page">
       <div class="analysis-grid">
-        <div class="stats-row">
-          <div class="stat-card">
-            <span class="stat-label">ЭНТРОПИЯ <i class="tip-icon" data-tip="entropy">?</i></span>
-            <span class="stat-value" id="resEntropy">0.00</span>
+        <div class="metrics-row">
+          <div class="metric-card">
+            <span class="m-title">ЭНТРОПИЯ <i class="tip" data-tip="entropy">?</i></span>
+            <span class="m-value" id="valEntropy">0.00</span>
           </div>
-          <div class="stat-card">
-            <span class="stat-label">МАТ. ОЖИДАНИЕ <i class="tip-icon" data-tip="math">?</i></span>
-            <span class="stat-value" id="resMath">0.00</span>
+          <div class="metric-card">
+            <span class="m-title">МАТ. ОЖИДАНИЕ <i class="tip" data-tip="math">?</i></span>
+            <span class="m-value" id="valMath">0.00</span>
           </div>
-          <div class="stat-card">
-            <span class="stat-label">ДИСПЕРСИЯ <i class="tip-icon" data-tip="disp">?</i></span>
-            <span class="stat-value" id="resDisp">0.00</span>
+          <div class="metric-card">
+            <span class="m-title">ДИСПЕРСИЯ <i class="tip" data-tip="disp">?</i></span>
+            <span class="m-value" id="valDisp">0.00</span>
           </div>
         </div>
 
-        <div class="charts-container">
-          <div class="card chart-box">
-            <h3>РАСПРЕДЕЛЕНИЕ ЧАСТОТ</h3>
+        <div class="charts-row">
+          <div class="card chart-container">
+            <h3>ГИСТОГРАММА ЧАСТОТ</h3>
             <canvas id="freqChart"></canvas>
           </div>
-          <div class="card chart-box">
+          <div class="card chart-container">
             <h3>ФАЗОВАЯ ПЛОСКОСТЬ</h3>
             <canvas id="phaseChart"></canvas>
           </div>
         </div>
 
-        <div class="card math-details">
-          <h3>ПОДРОБНЫЙ РАСЧЕТ</h3>
-          <div id="mathLog" class="log-view">Сгенерируйте пароль для просмотра расчетов...</div>
+        <div class="card log-card">
+          <h3>КРИПТОГРАФИЧЕСКИЙ ЛОГ</h3>
+          <div id="mathLog" class="math-log-content">Ожидание данных...</div>
         </div>
       </div>
     </section>
   </main>
 
-  <footer class="footer">
-    <div class="footer-info">
-      <span>[ PF·v3.5 ]</span>
-      <span>Студент: <strong>Утебалиев А.А.</strong></span>
-      <span>Группа: <strong>ИСС9-125</strong></span>
-    </div>
+  <footer class="main-footer">
+    <span>[ PassForge v3.5 ]</span>
+    <span>Студент: Утебалиев А.А. (ИСС9-125)</span>
   </footer>
 
   <script src="app.js"></script>
